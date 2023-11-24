@@ -3,7 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css"
 import "bootstrap"
 import { Tooltip } from "bootstrap"
 
-import { onMounted, reactive } from "vue"
+import { computed, onMounted, reactive } from "vue"
 
 const state = reactive({
   amountOfCards: 14,
@@ -15,6 +15,8 @@ const state = reactive({
   numbersSorted: true,
   numberRangeRandom: true,
   numbers: [],
+  renderKey: 0,
+  flipCounter: 0,
 })
 
 onMounted(() => {
@@ -33,6 +35,8 @@ function calculateNumberRange() {
 }
 
 function createNumbers() {
+  state.flipCounter = 0
+
   state.numbers = []
 
   let startRange, endRange = 0
@@ -50,9 +54,41 @@ function createNumbers() {
   if (state.numbersSorted) {
     state.numbers.sort((a, b) => a.value - b.value)
   }
+
+  state.renderKey++
 }
 
+const existingNumbers = computed(() => {
+  if (state.numbers.length < 2) return [0, 0]
+
+  // return 2 random numbers 
+  const numbers = []
+  while (numbers.length < 2) {
+    let nextIndex = Math.floor(Math.random() * state.numbers.length)
+    if (!numbers.includes(state.numbers[nextIndex].value)) {
+      numbers.push(state.numbers[nextIndex].value)
+    }
+  }
+  return numbers
+})
+
+const notExistingNumbers = computed(() => {
+  if (state.numbers.length < 2) return [0, 0]
+
+  // return 2 random numbers 
+  const numbers = []
+  while (numbers.length < 2) {
+    let nextNumber = Math.floor(Math.random() * 2000) - 999
+    if (!state.numbers.map((card) => card.value).includes(nextNumber)) {
+      numbers.push(nextNumber)
+    }
+  }
+  return numbers
+})
+
 function flipCard(card) {
+  state.flipCounter++
+
   if (card.flipped) {
     card.flipped = false
     return
@@ -65,12 +101,21 @@ function flipCard(card) {
   }
   card.flipped = !card.flipped
 }
+
+function resetFlipCounter() {
+  state.flipCounter = 0
+
+  //close all cards
+  state.numbers.forEach((card) => {
+    card.flipped = false
+  })
+}
 </script>
 
 <template>
   <h1>Nummerierte Karten</h1>
-  <div class="d-flex flex-row justify-content-center">
-    <div class="backgroundBox">
+  <div id="settingsRow" class="d-flex flex-row justify-content-center">
+    <div id="mixBox" class="backgroundBox">
       <h2>Karten neu mischen:</h2>
       <div class="d-flex flex-row">
         <div class="inputBox d-flex flex-row align-items-center me-2">
@@ -96,12 +141,12 @@ function flipCard(card) {
                     name="radioNumberRange" id="radioNumberRange2">
                   <div class="d-flex flex-column ms-2">
                     <div class="d-flex flex-row align-items-center">
-                      <label for="numberRangeFrom" class="me-2">Von:</label>
+                      <label for="numberRangeFrom" class="rangeLabel me-2">Von:</label>
                       <input id="numberRangeFrom" class="form-control" type="number" v-model="state.numberRangeFrom"
                         step="1" />
                     </div>
                     <div class="d-flex flex-row align-items-center">
-                      <label for="numberRangeTo" class="me-2">Bis:</label>
+                      <label for="numberRangeTo" class="rangeLabel me-2">Bis:</label>
                       <input id="numberRangeTo" class="form-control" type="number" v-model="state.numberRangeTo"
                         step="1" />
                     </div>
@@ -114,13 +159,13 @@ function flipCard(card) {
         <div class="d-flex flex-column justify-content-start">
           <div class="inputBox d-flex flex-row align-items-center">
             <label for="inputAmount" class="me-2">Anzahl:</label>
-            <input id="inputAmount" class="form-control" type="number" v-model="state.amountOfCards" min="1" max="20"
-              step="1" />
+            <input id="inputAmount" class="form-control" type="number" v-model="state.amountOfCards" min="2" max="20"
+              step="1" :class="{ 'is-invalid': (state.amountOfCards < 2 || state.amountOfCards > 20) }" />
           </div>
           <div class="inputBox my-2">
             <div class="form-check">
               <input class="form-check-input" type="checkbox" v-model="state.numbersSorted" id="inputSorted">
-              <label class="form-check-label" for="inputSorted">Zahlen sortiert</label>
+              <label class="form-check-label" for="inputSorted">Zahlen aufsteigend sortiert</label>
             </div>
           </div>
           <button type="button" class="btn btn-success" @click.prevent="createNumbers()">Mischen!</button>
@@ -128,7 +173,7 @@ function flipCard(card) {
       </div>
     </div>
 
-    <div class="backgroundBox ms-4">
+    <div id="settingsBox" class="backgroundBox ms-4">
       <h2>Anzeige Einstellungen:</h2>
       <div class="d-flex flex-column">
         <div class="d-flex flex-row">
@@ -155,12 +200,35 @@ function flipCard(card) {
             </div>
           </div>
         </div>
+        <div class="d-flex flex-row mt-3">
+          <div class="input-group">
+            <span class="input-group-text">Umgedrehte Karten:</span>
+            <span class="input-group-text"><b>{{ state.flipCounter }}</b></span>
+            <button class="btn btn-outline-danger" type="button" id="button-addon1"
+              @click.prevent="resetFlipCounter()"><font-awesome-icon icon="fa-regular fa-trash-can" /></button>
+          </div>
+        </div>
       </div>
+    </div>
+    <div id="searchBox" class="backgroundBox ms-4">
+      <h2>Suchen und Finden:</h2>
+      <p>Suche unter den Karten nach den nachfolgend genannten Zahlen oder weise nach, dass sie nicht vorhanden sind,
+        während du <b><u>so wenige Karten wie möglich aufdeckst</u></b>.</p>
+
+      <p>Vorhandene Zahlen: <b>{{ existingNumbers[0] }}, {{ existingNumbers[1] }}</b></p>
+      <p><u>Nicht</u> vorhandene Zahlen: <b>{{ notExistingNumbers[0] }}, {{ notExistingNumbers[1] }}</b></p>
+      <p v-if="state.numbersSorted">
+        <i>Übrigens: Man kann jede dieser Zahlen nach maximal {{ Math.ceil(Math.log2(state.numbers.length + 1)) }}
+          Schritten
+          finden (bzw. nachweisen, dass sie nicht enthalten ist)! Wie? Das sollst du rausfinden 😉</i>
+      </p>
     </div>
   </div>
 
-  <div class="d-flex flex-row">
-    <div class="flip-card" v-for="(card, index) in state.numbers" :key="card.index" @click.prevent="flipCard(card)">
+
+  <div class="d-flex flex-row mt-3" :key="state.renderKey">
+    <div class="flip-card shake" v-for="( card, index ) in  state.numbers " :key="card.index"
+      @click.prevent="flipCard(card)" :style="{ animationDelay: index * 0.03 + 's' }">
       <div class="flip-card-inner" :class="{ flipped: card.flipped }">
         <div class="flip-card-front">
           <div v-if="state.showIndex">
@@ -179,6 +247,59 @@ function flipCard(card) {
 </template>
 
 <style scoped>
+@media screen and (max-width: 1470px) {
+  #settingsRow {
+    flex-wrap: wrap !important;
+  }
+}
+
+#mixBox {
+  min-width: 648.1px;
+}
+
+#settingsBox {
+  min-width: 404.5px;
+}
+
+#searchBox {
+  width: 100%;
+}
+
+.rangeLabel {
+  width: 2rem;
+}
+
+#numberRangeFrom,
+#numberRangeTo {
+  width: 100px;
+}
+
+label {
+  user-select: none;
+}
+
+@keyframes shake {
+  0% {
+    transform: rotateY(0deg);
+  }
+
+  30% {
+    transform: rotate(-5deg);
+  }
+
+  60% {
+    transform: rotate(5deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out forwards;
+}
+
 .flip-card {
   cursor: pointer;
   background-color: transparent;
@@ -246,7 +367,7 @@ h1 {
 }
 
 #inputAmount {
-  width: 5rem;
+  width: 6rem;
 }
 
 .inputBox {
