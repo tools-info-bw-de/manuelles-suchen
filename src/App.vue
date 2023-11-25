@@ -350,7 +350,7 @@ label {
 
 .flip-card-front {
 
-  background-color: #bbb;
+  background-color: #ffba42;
   color: black;
   font-style: italic;
   margin: auto;
@@ -377,7 +377,7 @@ h1 {
 }
 
 .backgroundBox {
-  background-color: #f5f5f5;
+  background-color: #d4f9da;
   padding: 1rem;
   border-radius: 10px;
   border: 1px solid #dcdcdc;
