@@ -2,6 +2,7 @@
 import "bootstrap/dist/css/bootstrap.min.css"
 import "bootstrap"
 import { Tooltip } from "bootstrap"
+import interact from 'interactjs'
 
 import { computed, onMounted, reactive } from "vue"
 
@@ -17,6 +18,8 @@ const state = reactive({
   numbers: [],
   renderKey: 0,
   flipCounter: 0,
+  arrows: [],
+  arrowID: 0,
 })
 
 onMounted(() => {
@@ -25,6 +28,7 @@ onMounted(() => {
   // init tooltips
   const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
   const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new Tooltip(tooltipTriggerEl))
+
 })
 
 function calculateNumberRange() {
@@ -87,12 +91,12 @@ const notExistingNumbers = computed(() => {
 })
 
 function flipCard(card) {
-  state.flipCounter++
-
   if (card.flipped) {
     card.flipped = false
     return
   }
+
+  state.flipCounter++
 
   if (state.flipMaxOneCard) {
     state.numbers.forEach((card) => {
@@ -110,17 +114,58 @@ function resetFlipCounter() {
     card.flipped = false
   })
 }
+
+function addArrow() {
+  state.arrows.push({ id: state.arrowID++, text: "hu" })
+}
+
+// target elements with the "draggable" class
+interact('.draggable')
+  .draggable({
+    // disaable inertial throwing
+    inertia: false,
+    // keep the element within the area of it's parent
+    modifiers: [
+      interact.modifiers.restrictRect({
+        restriction: 'parent',
+        endOnly: false
+      })
+    ],
+    // enable autoScroll
+    autoScroll: true,
+
+    listeners: {
+      // call this function on every dragmove event
+      move: dragMoveListener,
+    }
+  })
+
+function dragMoveListener(event) {
+  var target = event.target
+  // keep the dragged position in the data-x/data-y attributes
+  var x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx
+  var y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy
+
+  // translate the element
+  target.style.transform = 'translate(' + x + 'px, ' + y + 'px)'
+
+  // update the posiion attributes
+  target.setAttribute('data-x', x)
+  target.setAttribute('data-y', y)
+}
+
 </script>
 
 <template>
-  <h1>Nummerierte Karten</h1>
+  <h1>Manuelles Suchen</h1>
+
   <div id="settingsRow" class="d-flex flex-row justify-content-center">
     <div id="mixBox" class="backgroundBox">
       <h2>Karten neu mischen:</h2>
       <div class="d-flex flex-row">
         <div class="inputBox d-flex flex-row align-items-center me-2">
-          <label for="" class="me-3">Zahlenbereich:</label>
           <div class="d-flex flex-column">
+            <label for="" class="align-self-center me-3"><b>Zahlenbereich:</b></label>
             <div class="inputBox mb-1">
               <div class="form-check">
                 <input class="form-check-input" type="radio" :value="true" v-model="state.numberRangeRandom"
@@ -191,7 +236,7 @@ function resetFlipCounter() {
           </div>
         </div>
         <div class="d-flex flex-row mt-3">
-          <button type="button" class="btn btn-outline-success">Füge Pfeil hinzu</button>
+          <button type="button" class="btn btn-outline-success" @click.prevent="addArrow()">Füge Pfeil hinzu</button>
 
           <div class="inputBox ms-2">
             <div class="form-check">
@@ -205,7 +250,7 @@ function resetFlipCounter() {
             <span class="input-group-text">Umgedrehte Karten:</span>
             <span class="input-group-text"><b>{{ state.flipCounter }}</b></span>
             <button class="btn btn-outline-danger" type="button" id="button-addon1"
-              @click.prevent="resetFlipCounter()"><font-awesome-icon icon="fa-regular fa-trash-can" /></button>
+              @click.prevent="resetFlipCounter()"><font-awesome-icon icon="fa-solid fa-trash-can" /></button>
           </div>
         </div>
       </div>
@@ -238,15 +283,48 @@ function resetFlipCounter() {
         </div>
         <div class="flip-card-back">
           <span class="mb-3"><u><b>Wert:</b></u></span>
-
           <span><strong>{{ card.value }}</strong></span>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class=" mt-3">
+    <div class="arrowsArea">
+      <div v-for="arrow in  state.arrows " :key="arrow.id" class="arrow draggable">
+        <font-awesome-icon icon="fa-solid fa-arrow-up-long" size="2xl" style="transform:scale(2)" />
+        <input type="text" class="form-control arrowText" v-model="arrow.text" onkeypress="
+          this.style.width = (this.value.length + 4) * 10 + 'px';" id="input" />
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.arrowText {
+  font-family: monospace;
+  margin-top: 15px;
+  min-width: 50px;
+}
+
+.arrow {
+  width: 30px;
+  height: 30px;
+  border-radius: 0.75em;
+  touch-action: none;
+  user-select: none;
+  transform: translate(0px, 0px);
+}
+
+.arrowsArea {
+  width: 100%;
+  height: 160px;
+}
+
+.align-self-center {
+  align-self: center;
+}
+
 @media screen and (max-width: 1470px) {
   #settingsRow {
     flex-wrap: wrap !important;
@@ -254,11 +332,13 @@ function resetFlipCounter() {
 }
 
 #mixBox {
-  min-width: 648.1px;
+  min-width: 560px;
+  max-width: 600px;
 }
 
 #settingsBox {
-  min-width: 404.5px;
+  min-width: 431px;
+  max-width: 450px;
 }
 
 #searchBox {
@@ -373,7 +453,7 @@ h1 {
 .inputBox {
   padding: 0.5rem;
   border-radius: 10px;
-  border: 1px solid #dcdcdc;
+  border: 1px solid #c8c8c8;
 }
 
 .backgroundBox {
