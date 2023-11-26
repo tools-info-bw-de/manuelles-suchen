@@ -1,7 +1,7 @@
 <script setup>
 import "bootstrap/dist/css/bootstrap.min.css"
 import "bootstrap"
-import { Tooltip } from "bootstrap"
+import { Tooltip, Popover } from "bootstrap"
 import interact from 'interactjs'
 
 import { computed, onMounted, reactive } from "vue"
@@ -12,7 +12,6 @@ const state = reactive({
   numberRangeTo: 100,
   showIndex: true,
   flipMaxOneCard: false,
-  moveCards: false,
   numbersSorted: true,
   numberRangeRandom: true,
   numbers: [],
@@ -29,6 +28,12 @@ onMounted(() => {
   const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
   const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new Tooltip(tooltipTriggerEl))
 
+  const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
+  const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new Popover(popoverTriggerEl, {
+    html: true,
+    sanitize: false,
+    trigger: "focus",
+  }))
 })
 
 function calculateNumberRange() {
@@ -116,13 +121,13 @@ function resetFlipCounter() {
 }
 
 function addArrow() {
-  state.arrows.push({ id: state.arrowID++, text: "hu" })
+  state.arrows.push({ id: state.arrowID++, text: "" })
 }
 
 // target elements with the "draggable" class
 interact('.draggable')
   .draggable({
-    // disaable inertial throwing
+    // disable inertial throwing
     inertia: false,
     // keep the element within the area of it's parent
     modifiers: [
@@ -132,7 +137,7 @@ interact('.draggable')
       })
     ],
     // enable autoScroll
-    autoScroll: true,
+    autoScroll: false,
 
     listeners: {
       // call this function on every dragmove event
@@ -154,9 +159,17 @@ function dragMoveListener(event) {
   target.setAttribute('data-y', y)
 }
 
+function removeArrow(id) {
+  state.arrows = state.arrows.filter((arrow) => arrow.id !== id)
+}
+
 </script>
 
 <template>
+  <button type="button" class="infoBtn btn btn-outline-dark btn-sm" data-bs-container="body" data-bs-toggle="popover"
+    data-bs-placement="bottom"
+    data-bs-content='Quellcode auf <a href="https://github.com/tools-info-bw-de/manuelle-suche" target="_blank">github</a>!<br>§ MIT - Marco Kümmel'>info</button>
+
   <h1>Manuelles Suchen</h1>
 
   <div id="settingsRow" class="d-flex flex-row justify-content-center">
@@ -213,13 +226,13 @@ function dragMoveListener(event) {
               <label class="form-check-label" for="inputSorted">Zahlen aufsteigend sortiert</label>
             </div>
           </div>
-          <button type="button" class="btn btn-success" @click.prevent="createNumbers()">Mischen!</button>
+          <button type="button" class="btn btn-success mt-auto" @click.prevent="createNumbers()">Neu mischen!</button>
         </div>
       </div>
     </div>
 
     <div id="settingsBox" class="backgroundBox ms-4">
-      <h2>Anzeige Einstellungen:</h2>
+      <h2>Anzeige:</h2>
       <div class="d-flex flex-column">
         <div class="d-flex flex-row">
           <div class="inputBox me-2">
@@ -237,17 +250,10 @@ function dragMoveListener(event) {
         </div>
         <div class="d-flex flex-row mt-3">
           <button type="button" class="btn btn-outline-success" @click.prevent="addArrow()">Füge Pfeil hinzu</button>
-
-          <div class="inputBox ms-2">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" v-model="state.moveCards" id="moveCards">
-              <label class="form-check-label" for="moveCards">Karten verschieben</label>
-            </div>
-          </div>
         </div>
         <div class="d-flex flex-row mt-3">
-          <div class="input-group">
-            <span class="input-group-text">Umgedrehte Karten:</span>
+          <div class="input-group input-group-lg">
+            <span class="input-group-text">Aufgedeckte Karten:</span>
             <span class="input-group-text"><b>{{ state.flipCounter }}</b></span>
             <button class="btn btn-outline-danger" type="button" id="button-addon1"
               @click.prevent="resetFlipCounter()"><font-awesome-icon icon="fa-solid fa-trash-can" /></button>
@@ -291,20 +297,41 @@ function dragMoveListener(event) {
 
   <div class=" mt-3">
     <div class="arrowsArea">
-      <div v-for="arrow in  state.arrows " :key="arrow.id" class="arrow draggable">
+      <div v-for="arrow in  state.arrows " :key="arrow.id" class="arrow draggable d-flex flex-column">
         <font-awesome-icon icon="fa-solid fa-arrow-up-long" size="2xl" style="transform:scale(2)" />
-        <input type="text" class="form-control arrowText" v-model="arrow.text" onkeypress="
-          this.style.width = (this.value.length + 4) * 10 + 'px';" id="input" />
+        <input type="text" class="form-control arrowText" v-model="arrow.text" placeholder="Name"
+          :style="{ width: (arrow.text.length + 4) * 10 + 'px', transform: 'translateX(' + (0 - (arrow.text.length) * 10 / 2) + 'px)' }"
+          id="input" />
+        <a class="removeArrow px-1 pb-1" @click.prevent="removeArrow(arrow.id)"><font-awesome-icon
+            icon="fa-solid fa-trash-can" /></a>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.infoBtn {
+  position: absolute;
+  top: 10px !important;
+  right: 10px !important;
+}
+
+.removeArrow {
+  opacity: 0.3;
+  color: red;
+  cursor: pointer;
+  text-align: center;
+  transition: 0.3s ease;
+}
+
+.removeArrow:hover {
+  opacity: 1;
+}
+
 .arrowText {
   font-family: monospace;
   margin-top: 15px;
-  min-width: 50px;
+  min-width: 70px;
 }
 
 .arrow {
@@ -313,7 +340,6 @@ function dragMoveListener(event) {
   border-radius: 0.75em;
   touch-action: none;
   user-select: none;
-  transform: translate(0px, 0px);
 }
 
 .arrowsArea {
